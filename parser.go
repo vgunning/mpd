@@ -6,9 +6,11 @@ import (
 	"github.com/moovweb/gokogiri"
 	"github.com/moovweb/gokogiri/xml"
 	"io/ioutil"
+	"net/http"
 	"reflect"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -67,29 +69,49 @@ type Cloneable interface {
 	Clone() Node
 }
 
-func ParseMpd(source, url string) (*Mpd, error) {
-	initTypeRegistry()
+func downloadMpd(url string) ([]byte, error) {
 
-	// read xml file
-	content, err := ioutil.ReadFile(source)
+	res, err := http.Get(url)
+
 	if err != nil {
-		fmt.Printf("failed to open example file, error: %s\n", err)
+		fmt.Printf("failed to download mpd %s, error:%s\r\n", url, err)
 		return nil, err
 	}
 
-	// parse file
-	doc, err := gokogiri.ParseXml(content)
+	mpd, err := ioutil.ReadAll(res.Body)
+	res.Body.Close()
 
+	if err != nil {
+		fmt.Printf("failed to read response body, error: %s\r\n", err)
+		return nil, err
+	}
+
+	return mpd, nil
+}
+
+func ParseMpd(url string) (*Mpd, error) {
+
+	// download mpd file
+	content, err := downloadMpd(url)
+	if err != nil {
+		return nil, err
+	}
+
+	// initialize mpd types registry.
+	initTypeRegistry()
+
+	// load xml
+	doc, err := gokogiri.ParseXml(content)
 	if err != nil {
 		fmt.Printf("failed to parse xml file, error: %s\n", err)
 		return nil, err
 	}
 
-	// important -- don't forget to free the resources when you're done!
+	// free the resources when done
 	defer doc.Free()
 
-	// Construct a virtual parent for the MPD to use in resolving relative URLs.
-	parent := FakeNode{BaseUrl: &BaseUrl{Url: url}}
+	// construct a virtual parent for the MPD to use in resolving relative URLs.
+	parent := FakeNode{BaseUrl: &BaseUrl{Url: url[:strings.LastIndex(url, "/")+1]}}
 
 	fmt.Println("Start parsing")
 	ok := false

@@ -182,7 +182,7 @@ func TestParser(t *testing.T) {
 	var root *Mpd
 	var err error
 
-	if root, err = ParseMpd("example2.xml", "streamrail.com"); err != nil {
+	if root, err = ParseMpd("http://sdk.streamrail.com/pepsi/cdn/0.0.1/3a5dd80efc3a867e55c69996c7f22051f6c3b94d/dash/manifest.mpd"); err != nil {
 		t.Error(err)
 	}
 

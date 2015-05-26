@@ -54,17 +54,12 @@ func NewMpdProcessor() MpdProcessor {
  *
  * @param {Mpd} mpd
  */
-func (mpdProcessor *MpdProcessor) Process(mpd Mpd) {
+func (mpdProcessor *MpdProcessor) Process(mpd *Mpd) {
 	mpdProcessor.ManifestInfo = NewManifestInfo()
-	fmt.Println("ValidateSegmentInfo")
-	mpdProcessor.validateSegmentInfo(&mpd)
-	fmt.Println("CalculateDurations")
-	mpdProcessor.calculateDurations(&mpd)
-	fmt.Println("FilterPeriods")
-	mpdProcessor.filterPeriods(&mpd)
-	fmt.Println("CreateManifestInfo")
-	mpdProcessor.createManifestInfo(mpd)
-	fmt.Println("Done Processing")
+	mpdProcessor.validateSegmentInfo(mpd)
+	mpdProcessor.calculateDurations(mpd)
+	mpdProcessor.filterPeriods(mpd)
+	mpdProcessor.createManifestInfo(*mpd)
 }
 
 /**
