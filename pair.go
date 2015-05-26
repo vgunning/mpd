@@ -1,4 +1,4 @@
-package main
+package mpd
 
 type Pair struct {
 	Earliest int

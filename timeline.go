@@ -1,4 +1,4 @@
-package main
+package mpd
 
 type TimeLine struct {
 	Start int

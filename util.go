@@ -1,4 +1,4 @@
-package main
+package mpd
 
 func Max(a, b int) int {
 	if a >= b {

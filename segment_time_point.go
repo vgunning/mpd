@@ -1,4 +1,4 @@
-package main
+package mpd
 
 import (
 	"github.com/moovweb/gokogiri/xml"

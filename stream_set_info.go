@@ -1,4 +1,4 @@
-package main
+package mpd
 
 /**
  * The next unique ID to assign to a StreamSetInfo.
