@@ -1,4 +1,4 @@
-# mpd
+# mpd [![Circle CI](https://circleci.com/gh/streamrail/mpd.svg?style=svg)](https://circleci.com/gh/streamrail/mpd)
 Parse MPD files.
 
 This is a rewrite of [Google's Shaka player][] MPD parser from JavaScript to Go.
