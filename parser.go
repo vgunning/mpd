@@ -118,7 +118,6 @@ func ParseMpd(url string) (*Mpd, error) {
 	root, ok := parseChild(parent, doc, Mpd_TAG_NAME).(*Mpd)
 
 	if ok {
-		PrintMPD(root, 0)
 		return root, nil
 	} else {
 		return nil, errors.New("failed to parse mpd")
