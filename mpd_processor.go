@@ -296,21 +296,9 @@ func (mpdProcessor *MpdProcessor) createManifestInfo(mpd Mpd) {
 			// Keep track of the largest end time of all segment references so that
 			// we can set a Period duration if one was not explicitly set in the MPD
 			// or calculated from calculateDurations_().
-			maxLastEndTime := 0
+			maxLastEndTime := uint64(0)
 
 			for _, representation := range adaptationSet.Representations {
-
-				// Get common DRM schemes.
-				// var commonDrmSchemes = streamSetInfo.drmSchemes.slice(0);
-				// this.updateCommonDrmSchemes_(representation, commonDrmSchemes);
-				// if (commonDrmSchemes.length == 0 &&
-				//     streamSetInfo.drmSchemes.length > 0) {
-				//   shaka.log.warning(
-				//       'Representation does not contain any DRM schemes that are in ' +
-				//       'common with other Representations within its AdaptationSet.',
-				//       representation);
-				//   continue;
-				// }
 
 				streamInfo := mpdProcessor.createStreamInfo(mpd, *period, *representation)
 				if streamInfo == nil {
@@ -322,14 +310,16 @@ func (mpdProcessor *MpdProcessor) createManifestInfo(mpd Mpd) {
 				// streamSetInfo.drmSchemes = commonDrmSchemes;
 
 				if streamInfo.SegmentIndex != nil && streamInfo.SegmentIndex.Length() > 0 {
-					maxLastEndTime = Max(maxLastEndTime, streamInfo.SegmentIndex.Last().EndTime)
+					if maxLastEndTime < streamInfo.SegmentIndex.Last().EndTime {
+						maxLastEndTime = streamInfo.SegmentIndex.Last().EndTime
+					}
 				}
 			}
 
 			periodInfo.StreamSetInfos = append(periodInfo.StreamSetInfos, streamSetInfo)
 
 			if periodInfo.Duration == -1 {
-				periodInfo.Duration = maxLastEndTime
+				periodInfo.Duration = int(maxLastEndTime)
 
 				// If the MPD is dynamic then the Period's duration will likely change
 				// after we re-process/update the MPD. When the Period's duration
@@ -357,74 +347,6 @@ func (mpdProcessor *MpdProcessor) createManifestInfo(mpd Mpd) {
 		mpdProcessor.ManifestInfo.PeriodInfos = append(mpdProcessor.ManifestInfo.PeriodInfos, periodInfo)
 	}
 }
-
-// /**
-//  * Updates |commonDrmSchemes|.
-//  *
-//  * If |commonDrmSchemes| is empty then after this function is called
-//  * |commonDrmSchemes| will equal |representation|'s application provided DRM
-//  * schemes.
-//  *
-//  * Otherwise, if |commonDrmSchemes| is non-empty then after this function is
-//  * called |commonDrmSchemes| will equal the intersection between
-//  * |representation|'s application provided DRM schemes and |commonDrmSchemes|
-//  * at the time this function was called.
-//  *
-//  * @param {!shaka.dash.mpd.Representation} representation
-//  * @param {!Array.<!shaka.player.DrmSchemeInfo>} commonDrmSchemes
-//  *
-//  * @private
-//  */
-// // shaka.dash.MpdProcessor.prototype.updateCommonDrmSchemes_ = function(
-// //     representation, commonDrmSchemes) {
-// //   var drmSchemes = this.getDrmSchemeInfos_(representation);
-
-// //   if (commonDrmSchemes.length == 0) {
-// //     Array.prototype.push.apply(commonDrmSchemes, drmSchemes);
-// //     return;
-// //   }
-
-// //   for (var i = 0; i < commonDrmSchemes.length; ++i) {
-// //     var found = false;
-// //     for (var j = 0; j < drmSchemes.length; ++j) {
-// //       if (commonDrmSchemes[i].key() == drmSchemes[j].key()) {
-// //         found = true;
-// //         break;
-// //       }
-// //     }
-// //     if (!found) {
-// //       commonDrmSchemes.splice(i, 1);
-// //       --i;
-// //     }
-// //   }
-// // };
-
-// /**
-//  * Gets the application provided DrmSchemeInfos for the given Representation.
-//  *
-//  * @param {!shaka.dash.mpd.Representation} representation
-//  * @return {!Array.<!shaka.player.DrmSchemeInfo>} The application provided
-//  *     DrmSchemeInfos. A dummy scheme, which has an empty |keySystem| string,
-//  *     is used for unencrypted content.
-//  * @private
-//  */
-// // shaka.dash.MpdProcessor.prototype.getDrmSchemeInfos_ =
-// //     function(representation) {
-// //   var drmSchemes = [];
-// //   if (representation.contentProtections.length == 0) {
-// //     // Return a single item which indicates that the content is unencrypted.
-// //     drmSchemes.push(shaka.player.DrmSchemeInfo.createUnencrypted());
-// //   } else if (this.interpretContentProtection_) {
-// //     for (var i = 0; i < representation.contentProtections.length; ++i) {
-// //       var contentProtection = representation.contentProtections[i];
-// //       var drmSchemeInfo = this.interpretContentProtection_(contentProtection);
-// //       if (drmSchemeInfo) {
-// //         drmSchemes.push(drmSchemeInfo);
-// //       }
-// //     }
-// //   }
-// //   return drmSchemes;
-// // };
 
 /**
  * Creates a StreamInfo from the given Representation.
@@ -541,13 +463,13 @@ func (mpdProcessor *MpdProcessor) buildStreamInfoFromSegmentList(segmentList *Se
 	segmentInitializationInfo, _ := mpdProcessor.createSegmentMetadataInfo(segmentList.Initialization)
 	streamInfo.SegmentInitializationInfo = &segmentInitializationInfo
 
-	lastEndTime := 0
+	lastEndTime := uint64(0)
 	references := make([]*SegmentReference, 0)
 
 	for i, segmentUrl := range segmentList.SegmentUrls {
 
 		// Compute the segment's unscaled start time.
-		var startTime int
+		var startTime uint64
 		if i == 0 {
 			startTime = 0
 		} else {
@@ -555,16 +477,16 @@ func (mpdProcessor *MpdProcessor) buildStreamInfoFromSegmentList(segmentList *Se
 		}
 		assert(startTime >= 0)
 
-		endTime := -1
-		scaledEndTime := -1
+		endTime := uint64(0)
+		scaledEndTime := uint64(0)
 
-		scaledStartTime := startTime / segmentList.Timescale
+		scaledStartTime := startTime / uint64(segmentList.Timescale)
 
 		// If segmentList.segmentDuration is null then there must only be one
 		// segment.
-		if segmentList.SegmentDuration != -1 {
-			endTime = startTime + segmentList.SegmentDuration
-			scaledEndTime = endTime / segmentList.Timescale
+		if segmentList.SegmentDuration != 0 {
+			endTime = startTime + uint64(segmentList.SegmentDuration)
+			scaledEndTime = endTime / uint64(segmentList.Timescale)
 		}
 
 		lastEndTime = endTime
@@ -676,9 +598,6 @@ func (mpdProcessor *MpdProcessor) buildStreamInfoFromIndexUrlTemplate(representa
 		} else {
 			mediaUrl = filledUrlTemplate
 		}
-		// mediaUrl = representation.baseUrl ?
-		//            representation.baseUrl.resolve(filledUrlTemplate) :
-		//            filledUrlTemplate;
 	} else {
 		// Fallback to the Representation's URL.
 		mediaUrl = representation.BaseUrl.Url
@@ -706,7 +625,7 @@ func (mpdProcessor *MpdProcessor) buildStreamInfoFromIndexUrlTemplate(representa
 	streamInfo.MediaUrl = mediaUrl
 
 	if segmentTemplate.PresentationTimeOffset != -1 {
-		streamInfo.TimestampOffset = -1 * segmentTemplate.PresentationTimeOffset / segmentTemplate.Timescale
+		streamInfo.TimestampOffset = -1 * segmentTemplate.PresentationTimeOffset / int(segmentTemplate.Timescale)
 	}
 
 	if segmentIndexInfo, err := mpdProcessor.createSegmentMetadataInfo(&representationIndex); err != nil {
@@ -796,11 +715,11 @@ func (mpdProcessor *MpdProcessor) buildStreamInfoFromSegmentTimeline(mpd Mpd, pe
 	// @availabilityStartTime then the calculation below would be more
 	// complicated than the calculations in computeAvailableSegmentRange_() since
 	// the duration of each segment is variable here.
-	earliestAvailableTimestamp := 0
+	earliestAvailableTimestamp := uint64(0)
 	if mpd.Type == "dynamic" && len(timeline) > 0 {
 		index := Max(0, len(timeline)-2)
 		timeShiftBufferDepth := mpd.TimeShiftBufferDepth
-		earliestAvailableTimestamp = (timeline[index].Start / segmentTemplate.Timescale) - timeShiftBufferDepth
+		earliestAvailableTimestamp = (timeline[index].Start / uint64(segmentTemplate.Timescale)) - uint64(timeShiftBufferDepth)
 	}
 
 	// Generate a SegmentIndex.
@@ -811,8 +730,8 @@ func (mpdProcessor *MpdProcessor) buildStreamInfoFromSegmentTimeline(mpd Mpd, pe
 		endTime := timeline[i].End
 
 		// Compute the segment's scaled start time and scaled end time.
-		scaledStartTime := startTime / segmentTemplate.Timescale
-		scaledEndTime := endTime / segmentTemplate.Timescale
+		scaledStartTime := startTime / uint64(segmentTemplate.Timescale)
+		scaledEndTime := endTime / uint64(segmentTemplate.Timescale)
 
 		if scaledStartTime < earliestAvailableTimestamp {
 			// Skip unavailable segments.
@@ -862,12 +781,12 @@ func (mpdProcessor *MpdProcessor) buildStreamInfoFromSegmentTimeline(mpd Mpd, pe
 
 	// Set StreamInfo properties.
 	if segmentTemplate.PresentationTimeOffset != -1 {
-		streamInfo.TimestampOffset = -1 * segmentTemplate.PresentationTimeOffset / segmentTemplate.Timescale
+		streamInfo.TimestampOffset = -1 * segmentTemplate.PresentationTimeOffset / int(segmentTemplate.Timescale)
 	}
 
 	if mpd.Type == "dynamic" && len(references) > 0 {
 		minBufferTime := mpdProcessor.ManifestInfo.MinBufferTime
-		bestAvailableTimestamp := references[len(references)-1].StartTime - minBufferTime
+		bestAvailableTimestamp := references[len(references)-1].StartTime - uint64(minBufferTime)
 
 		if bestAvailableTimestamp >= earliestAvailableTimestamp {
 			fmt.Printf("The best available segment is still available!")
@@ -885,7 +804,7 @@ func (mpdProcessor *MpdProcessor) buildStreamInfoFromSegmentTimeline(mpd Mpd, pe
 			}
 		}
 
-		assert(streamInfo.CurrentSegmentStartTime != -1)
+		assert(streamInfo.CurrentSegmentStartTime != 0)
 	}
 
 	if segmentInitializationInfo, err := mpdProcessor.createSegmentMetadataInfo(&initialization); err != nil {
@@ -910,7 +829,7 @@ func (mpdProcessor *MpdProcessor) createTimeline(segmentTemplate *SegmentTemplat
 	assert(segmentTemplate.Timeline != nil)
 
 	timePoints := segmentTemplate.Timeline.TimePoints
-	lastEndTime := 0
+	lastEndTime := uint64(0)
 
 	/** @type {!Array.<{start: number, end: number}>} */
 	timeline := make([]TimeLine, 0)
@@ -923,14 +842,14 @@ func (mpdProcessor *MpdProcessor) createTimeline(segmentTemplate *SegmentTemplat
 		}
 
 		for j := 0; j <= repeat; j++ {
-			if timePoints[i].Duration == -1 {
+			if timePoints[i].Duration == ^uint64(0) {
 				fmt.Printf("SegmentTimeline 'S' element does not have a duration.%s\r\n", timePoints[i])
 				return nil
 			}
 
 			// Compute the segment's unscaled start time and unscaled end time.
-			var startTime int
-			if timePoints[i].StartTime != -1 && j == 0 {
+			var startTime uint64
+			if timePoints[i].StartTime != ^uint64(0) && j == 0 {
 				startTime = timePoints[i].StartTime
 			} else {
 				if i == 0 && j == 0 {
@@ -951,9 +870,14 @@ func (mpdProcessor *MpdProcessor) createTimeline(segmentTemplate *SegmentTemplat
 			// end of the last segment, but this complicates the computation of the
 			// $Time$ placeholder.
 			if len(timeline) > 0 && startTime != lastEndTime {
-				delta := startTime - lastEndTime
+				var delta uint64
+				if startTime > lastEndTime {
+					delta = startTime - lastEndTime
+				} else {
+					delta = lastEndTime - startTime
+				}
 
-				if Abs(delta/segmentTemplate.Timescale) >= GAP_OVERLAP_WARNING_THRESHOLD {
+				if delta/uint64(segmentTemplate.Timescale) >= GAP_OVERLAP_WARNING_THRESHOLD {
 					fmt.Printf("SegmentTimeline contains a large gap/overlap, the content may have errors in it.%s\r\n", timePoints[i])
 				}
 
@@ -1004,20 +928,6 @@ func (mpdProcessor *MpdProcessor) buildStreamInfoFromSegmentDuration(mpd Mpd, pe
 	var earliestSegmentNumber int = -1
 	var currentSegmentNumber int = -1
 
-	// TODO: handle dynamic
-	// if mpd.Type == "dynamic" {
-	// 	pair := mpdProcessor.ComputeAvailableSegmentRange(mpd, period, *segmentTemplate)
-	// 	if pair != nil {
-	// 		// Build the SegmentIndex starting from the earliest available segment.
-	// 		earliestSegmentNumber = pair.Earliest
-	// 		currentSegmentNumber = pair.Current
-	// 		numSegmentsBeforeCurrentSegment = currentSegmentNumber - earliestSegmentNumber
-	// 		assert(numSegmentsBeforeCurrentSegment >= 0)
-	// 	}
-	// } else {
-	// 	earliestSegmentNumber = 1
-	// }
-	// END OF TODO
 	earliestSegmentNumber = 1 // REMOVE THIS LINE WHEN HANDLING DYNAMIC
 
 	assert(earliestSegmentNumber == -1 || earliestSegmentNumber >= 0)
@@ -1046,8 +956,8 @@ func (mpdProcessor *MpdProcessor) buildStreamInfoFromSegmentDuration(mpd Mpd, pe
 		startTime := (segmentNumber - 1) * segmentTemplate.SegmentDuration
 		endTime := startTime + segmentTemplate.SegmentDuration
 
-		scaledStartTime := startTime / segmentTemplate.Timescale
-		scaledEndTime := endTime / segmentTemplate.Timescale
+		scaledStartTime := uint32(startTime) / segmentTemplate.Timescale
+		scaledEndTime := uint32(endTime) / segmentTemplate.Timescale
 
 		absoluteSegmentNumber := (segmentNumber - 1) + segmentTemplate.StartNumber
 
@@ -1062,7 +972,7 @@ func (mpdProcessor *MpdProcessor) buildStreamInfoFromSegmentDuration(mpd Mpd, pe
 			representation.Id,
 			segmentReplacement,
 			representation.Bandwidth,
-			timeReplacement)
+			uint64(timeReplacement))
 
 		if filledUrlTemplate == "" {
 			// An error has already been logged.
@@ -1075,7 +985,7 @@ func (mpdProcessor *MpdProcessor) buildStreamInfoFromSegmentDuration(mpd Mpd, pe
 		} else {
 			mediaUrl = filledUrlTemplate
 		}
-		segmentRef := NewSegmentReference(startTime, scaledStartTime, scaledEndTime, 0 /* startByte */, -1 /* endByte */, mediaUrl)
+		segmentRef := NewSegmentReference(uint64(startTime), uint64(scaledStartTime), uint64(scaledEndTime), 0 /* startByte */, -1 /* endByte */, mediaUrl)
 		references = append(references, &segmentRef)
 	}
 
@@ -1093,13 +1003,13 @@ func (mpdProcessor *MpdProcessor) buildStreamInfoFromSegmentDuration(mpd Mpd, pe
 
 	// Set StreamInfo properties.
 	if segmentTemplate.PresentationTimeOffset != -1 {
-		streamInfo.TimestampOffset = -1 * segmentTemplate.PresentationTimeOffset / segmentTemplate.Timescale
+		streamInfo.TimestampOffset = -1 * int(uint32(segmentTemplate.PresentationTimeOffset)/segmentTemplate.Timescale)
 	}
 
 	if mpd.Type == "dynamic" && len(references) > 0 {
 		assert(currentSegmentNumber == -1)
-		scaledSegmentDuration := segmentTemplate.SegmentDuration / segmentTemplate.Timescale
-		streamInfo.CurrentSegmentStartTime = (currentSegmentNumber - 1) * scaledSegmentDuration
+		scaledSegmentDuration := uint32(segmentTemplate.SegmentDuration) / segmentTemplate.Timescale
+		streamInfo.CurrentSegmentStartTime = uint64(uint32(currentSegmentNumber-1) * scaledSegmentDuration)
 	}
 
 	if segmentMetadataInfo, err := mpdProcessor.createSegmentMetadataInfo((Node)(&initialization)); err != nil {
@@ -1147,13 +1057,6 @@ func (mpdProcessor *MpdProcessor) computeOptimalSegmentIndexSize(mpd Mpd, period
 			return -1
 		}
 	} else {
-		// TODO: support dynamic!
-		// Note that |period|'s duration and @minimumUpdatePeriod may be very
-		// large, so fallback to a default value if necessary. The VideoSource is
-		// responsible for generating new SegmentIndexes when it needs them.
-		// END OF TODO, UNCOMMENT NEXT TWO LINES TO SUPPORT DYNAMIC
-		// duration = Min(period.Duration || Number.POSITIVE_INFINITY, mpd.MinUpdatePeriod || Number.POSITIVE_INFINITY)
-		// duration = Min(duration, MAX_SEGMENT_INDEX_SPAN)
 	}
 	// assert(duration && (duration != Number.POSITIVE_INFINITY), "duration should not be zero or infinity!")
 	assert(duration == -1)
@@ -1164,162 +1067,6 @@ func (mpdProcessor *MpdProcessor) computeOptimalSegmentIndexSize(mpd Mpd, period
 	assert(n >= 1)
 	return int(n)
 }
-
-/**
- * Computes the segment numbers of the earliest segment and the current
- * segment, both relative to the start of |period|. Assumes the MPD is dynamic.
- * |segmentTemplate| must have a segment duration.
- *
- * The earliest segment is the segment with the smallest start time that is
- * still available from the media server. The current segment is the segment
- * with the largest start time that is available from the media server and that
- * also respects the suggestedPresentationDelay attribute and the minBufferTime
- * attribute.
- *
- * @param {!shaka.dash.mpd.Mpd} mpd
- * @param {!shaka.dash.mpd.Period} period
- * @param {!shaka.dash.mpd.SegmentTemplate} segmentTemplate
- * @return {?{earliest: number, current: number}} Two segment numbers, or null
- *     if the stream is not available yet.
- * @private
- */
-// func (mpdProcessor *MpdProcessor) ComputeAvailableSegmentRange(mpd Mpd, period Period, segmentTemplate SegmentTemplate) *Pair {
-// 	currentTime := shaka.util.Clock.now() / 1000.0
-// 	var availabilityStartTime int
-
-// 	if mpd.AvailabilityStartTime != -1 {
-// 		availabilityStartTime = mpd.AvailabilityStartTime
-// 	} else {
-// 		availabilityStartTime = currentTime
-// 	}
-
-// 	if availabilityStartTime > currentTime {
-// 		fmt.Printf("The stream is not available yet!%s\r\n", period)
-// 		return nil
-// 	}
-
-// 	minBufferTime := mpd.minBufferTime
-// 	suggestedPresentationDelay := mpd.SuggestedPresentationDelay
-
-// 	// The following diagram shows the relationship between the values we use to
-// 	// compute the current segment number; descriptions of each value are given
-// 	// within the code. The diagram depicts the media presentation timeline. 0
-// 	// corresponds to availabilityStartTime + period.start in wall-clock time,
-// 	// and currentPresentationTime corresponds to currentTime in wall-clock time.
-// 	//
-// 	// Legend:
-// 	// CPT: currentPresentationTime
-// 	// EAT: earliestAvailableSegmentStartTime
-// 	// LAT: latestAvailableSegmentStartTime
-// 	// BAT: bestAvailableSegmentStartTime
-// 	// SD:  scaledSegmentDuration.
-// 	// SPD: suggestedPresentationDelay
-// 	// MBT: minBufferTime
-// 	// TSB: timeShiftBufferDepth
-// 	//
-// 	// Time:
-// 	//   <---|-----------------+--------+-----------------+----------|--------->
-// 	//       0                EAT      BAT               LAT        CPT
-// 	//                                                      |---SD---|
-// 	//                                      |-MBT-|--SPD--|
-// 	//                      |---SD---|---SD---|<--------TSB--------->|
-// 	// Segments:
-// 	//   <---1--------2--------3--------4--------5--------6--------7--------8-->
-// 	//       |---SD---|---SD---| ...
-
-// 	assert(segmentTemplate.SegmentDuration != -1)
-// 	assert(segmentTemplate.Timescale > 0)
-// 	scaledSegmentDuration := segmentTemplate.SegmentDuration / segmentTemplate.Timescale
-
-// 	// The current presentation time, which is the amount of time since the start
-// 	// of the Period.
-// 	currentPresentationTime := currentTime - (availabilityStartTime + period.Start)
-// 	if currentPresentationTime < 0 {
-// 		fmt.Printf("The Period is not available yet!%s\r\n", period)
-// 		return nil
-// 	}
-
-// 	// Compute the segment start time of the earliest available segment, i.e.,
-// 	// the segment that starts furthest from the present but is still available).
-// 	// The MPD spec. indicates that
-// 	//
-// 	// SegmentAvailabilityStartTime =
-// 	//   MpdAvailabilityStartTime + PeriodStart + SegmentStart + SegmentDuration
-// 	//
-// 	// SegmentAvailabilityEndTime =
-// 	//   SegmentAvailabilityStartTime + SegmentDuration + TimeShiftBufferDepth
-// 	//
-// 	// So let SegmentAvailabilityEndTime equal the current time and compute
-// 	// SegmentStart, which yields the start time that a segment would need to
-// 	// have to have an availability end time equal to the current time.
-// 	//
-// 	// TODO: Use availabilityTimeOffset
-// 	earliestAvailableTimestamp := currentPresentationTime - (2 * scaledSegmentDuration) - mpd.TimeShiftBufferDepth
-// 	if earliestAvailableTimestamp < 0 {
-// 		earliestAvailableTimestamp = 0
-// 	}
-
-// 	// Now round up to the nearest segment boundary, since the segment
-// 	// corresponding to |earliestAvailableTimestamp| is not available.
-// 	earliestAvailableSegmentStartTime := Math.ceil(earliestAvailableTimestamp/scaledSegmentDuration) * scaledSegmentDuration
-
-// 	// Compute the segment start time of the latest available segment, i.e., the
-// 	// segment that starts closest to the present but is available.
-// 	//
-// 	// Using the above formulas, let SegmentAvailabilityStartTime equal the
-// 	// current time and compute SegmentStart, which yields the start time that
-// 	// a segment would need to have to have an availability start time
-// 	// equal to the current time.
-// 	latestAvailableTimestamp := currentPresentationTime - scaledSegmentDuration
-// 	if latestAvailableTimestamp < 0 {
-// 		fmt.Printf("The first segment is not available yet!%s\r\n", period)
-// 		return nil
-// 	}
-
-// 	// Now round down to the nearest segment boundary, since the segment
-// 	// corresponding to |latestAvailableTimestamp| may not yet be available.
-// 	latestAvailableSegmentStartTime := Math.floor(latestAvailableTimestamp/scaledSegmentDuration) * scaledSegmentDuration
-
-// 	// Now compute the start time of the "best" available segment, by offsetting
-// 	// by @suggestedPresentationDelay and @minBufferTime. Note that we subtract
-// 	// by @minBufferTime to ensure that after playback begins we can buffer at
-// 	// least @minBufferTime seconds worth of media content.
-// 	bestAvailableTimestamp := latestAvailableSegmentStartTime - suggestedPresentationDelay - minBufferTime
-// 	if bestAvailableTimestamp < 0 {
-// 		fmt.Println("The first segment may not be available yet.")
-// 		bestAvailableTimestamp = 0
-// 		// Don't return; taking into account @suggestedPresentationDelay is only a
-// 		// reccomendation. The first segment /might/ be available.
-// 	}
-
-// 	bestAvailableSegmentStartTime := Math.floor(bestAvailableTimestamp/scaledSegmentDuration) * scaledSegmentDuration
-
-// 	// Now take the larger of |bestAvailableSegmentStartTime| and
-// 	// |earliestAvailableSegmentStartTime|.
-// 	var currentSegmentStartTime int
-
-// 	if bestAvailableSegmentStartTime >= earliestAvailableSegmentStartTime {
-// 		currentSegmentStartTime = bestAvailableSegmentStartTime
-// 		fmt.Println("The best available segment is still available!")
-// 	} else {
-// 		// NOTE: @suggestedPresentationDelay + @minBufferTime is large compared to
-// 		// @timeShiftBufferDepth, so we can't start as far back, for buffering, as
-// 		// we'd like.
-// 		currentSegmentStartTime = earliestAvailableSegmentStartTime
-// 		fmt.Println("The best available segment is no longer available.")
-// 	}
-
-// 	earliestSegmentNumber := (earliestAvailableSegmentStartTime / scaledSegmentDuration) + 1
-// 	assert(earliestSegmentNumber == Math.round(earliestSegmentNumber), "earliestSegmentNumber should be an integer.")
-
-// 	currentSegmentNumber := (currentSegmentStartTime / scaledSegmentDuration) + 1
-// 	assert(currentSegmentNumber == Math.round(currentSegmentNumber), "currentSegmentNumber should be an integer.")
-
-// 	fmt.Printf("earliestSegmentNumber%s\r\n", earliestSegmentNumber)
-// 	fmt.Printf("currentSegmentNumber%s\r\n", currentSegmentNumber)
-
-// 	return NewPair(earliestSegmentNumber, currentSegmentNumber)
-// }
 
 /**
  * Generates an Initialization from a SegmentTemplate.
@@ -1369,14 +1116,14 @@ func (mpdProcessor *MpdProcessor) generateInitialization(representation Represen
  * @return {string} A URL on success; null if the resulting URL contains
  *     illegal characters.
  */
-func (mpdProcessor *MpdProcessor) fillUrlTemplate(urlTemplate string, representationId string, number int, bandwidth int, time int) string {
+func (mpdProcessor *MpdProcessor) fillUrlTemplate(urlTemplate string, representationId string, number int, bandwidth uint32, time uint64) string {
 	/** @type {!Object.<string, ?number|?string>} */
 	// fmt.Printf("In FillUrlTemplate, urlTemplate: %s, representationId: %s, number: %d, bandwidth: %d, time: %d\r\n", urlTemplate, representationId, number, bandwidth, time)
 	valueTable := make(map[string]string)
 	valueTable["$RepresentationID$"] = representationId
 	valueTable["$Number$"] = strconv.Itoa(number)
-	valueTable["Bandwidth"] = strconv.Itoa(bandwidth)
-	valueTable["Time"] = strconv.Itoa(time)
+	valueTable["$Bandwidth$"] = strconv.FormatUint(uint64(bandwidth), 10)
+	valueTable["$Time$"] = strconv.FormatUint(time, 10)
 
 	re := regexp.MustCompile("\\$(RepresentationID|Number|Bandwidth|Time)?(?:%0([0-9]+)d)?\\$")
 	// var re = /\$(RepresentationID|Number|Bandwidth|Time)?(?:%0([0-9]+)d)?\$/g;
@@ -1394,17 +1141,7 @@ func (mpdProcessor *MpdProcessor) fillUrlTemplate(urlTemplate string, representa
 			return match
 		}
 
-		// if (match == "RepresentationID" && widthString) {
-		//   fmt.Printf("URL template should not contain a width specifier for identifier %s\r\n", RepresentationID)
-		//   widthString = undefined
-		// }
-
-		// Create padding string.
-		// width := value
-		// paddingSize := Math.max(0, width - valueString.length);
-		// padding := (new Array(paddingSize + 1)).join('0');
 		return value
-		// return padding + valueString
 	})
 
 	// The URL might contain illegal characters (e.g., '%').

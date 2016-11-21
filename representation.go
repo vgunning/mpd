@@ -22,7 +22,7 @@ type Representation struct {
 	 * playback begins.
 	 * @type {?number}
 	 */
-	Bandwidth int
+	Bandwidth uint32
 
 	/** @type {?number} */
 	Width int
@@ -66,7 +66,7 @@ func (representation *Representation) Parse(parent Node, elem xml.Node) {
 
 	// Parse attributes.
 	representation.Id, _ = parseAttrAsString(elem, "id")
-	representation.Bandwidth, _ = parseAttrAsPositiveInt(elem, "bandwidth")
+	representation.Bandwidth, _ = parseAttrAsUnsignedInt(elem, "bandwidth")
 	if representation.Width, err = parseAttrAsPositiveInt(elem, "width"); err != nil {
 		representation.Width = p.Width
 	}

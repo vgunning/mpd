@@ -21,14 +21,14 @@ type StreamInfo struct {
 	 * This value is non-null if the stream is both live and available;
 	 * otherwise, this value is null.
 	 */
-	CurrentSegmentStartTime int
+	CurrentSegmentStartTime uint64
 
 	/**
 	 * Bandwidth required, in bits per second, to assure uninterrupted playback,
 	 * assuming that |minBufferTime| seconds of video are in buffer before
 	 * playback begins.
 	 */
-	Bandwidth int
+	Bandwidth uint32
 
 	Width int
 
@@ -75,8 +75,8 @@ func NewStreamInfo() StreamInfo {
 		UniqueId:                  nextUniqueId,
 		Id:                        "",
 		TimestampOffset:           0,
-		CurrentSegmentStartTime:   -1,
-		Bandwidth:                 -1,
+		CurrentSegmentStartTime:   0,
+		Bandwidth:                 0,
 		Width:                     -1,
 		Height:                    -1,
 		MimeType:                  "",

@@ -1,6 +1,8 @@
 package mpd
 
 import (
+	"fmt"
+
 	"github.com/moovweb/gokogiri/xml"
 )
 
@@ -10,10 +12,10 @@ type SegmentTimePoint struct {
 	 * of the Period.
 	 * @type {?number}
 	 */
-	StartTime int
+	StartTime uint64
 
 	/** @type {?number} */
-	Duration int
+	Duration uint64
 
 	/** @type {?number} */
 	Repeat int
@@ -27,12 +29,13 @@ type SegmentTimePoint struct {
 func (segmentTimePoint *SegmentTimePoint) Parse(parent Node, elem xml.Node) {
 	var err error
 	// Parse attributes.
-	if segmentTimePoint.StartTime, err = parseAttrAsNonNegativeInt(elem, "t"); err != nil {
-		segmentTimePoint.StartTime = -1
+	if segmentTimePoint.StartTime, err = parseAttrAsUnsignedLong(elem, "t"); err != nil {
+		segmentTimePoint.StartTime = ^uint64(0)
+		fmt.Printf("%s\r\n", err.Error())
 	}
 
-	if segmentTimePoint.Duration, err = parseAttrAsNonNegativeInt(elem, "d"); err != nil {
-		segmentTimePoint.Duration = -1
+	if segmentTimePoint.Duration, err = parseAttrAsUnsignedLong(elem, "d"); err != nil {
+		segmentTimePoint.Duration = ^uint64(0)
 	}
 	if segmentTimePoint.Repeat, err = parseAttrAsNonNegativeInt(elem, "r"); err != nil {
 		segmentTimePoint.Repeat = -1

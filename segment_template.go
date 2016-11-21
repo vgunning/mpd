@@ -6,22 +6,22 @@ import (
 
 type SegmentTemplate struct {
 	/** @type {?number} */
-	Timescale int
+	Timescale uint32 // xs:unsignedInt
 
 	/** @type {?number} */
-	PresentationTimeOffset int
+	PresentationTimeOffset int // xs:unsignedLong
 
 	/**
 	 * Each segment's duration. This value is never zero.
 	 * @type {?number}
 	 */
-	SegmentDuration int
+	SegmentDuration int // xs:duration
 
 	/**
 	 * The segment number origin. This value is never zero.
 	 * @type {?number}
 	 */
-	StartNumber int
+	StartNumber int // xs:unsignedInt
 
 	/** @type {?string} */
 	MediaUrlTemplate string
@@ -45,7 +45,7 @@ func (segmentTemplate *SegmentTemplate) Parse(parent Node, elem xml.Node) {
 	var err error
 
 	// Parse attributes.
-	segmentTemplate.Timescale, _ = parseAttrAsPositiveInt(elem, "timescale")
+	segmentTemplate.Timescale, _ = parseAttrAsUnsignedInt(elem, "timescale")
 
 	if segmentTemplate.PresentationTimeOffset, err = parseAttrAsNonNegativeInt(elem, "presentationTimeOffset"); err != nil {
 		segmentTemplate.PresentationTimeOffset = -1

@@ -13,22 +13,22 @@ type SegmentList struct {
 	BaseUrl *BaseUrl
 
 	/** @type {?number} */
-	Timescale int
+	Timescale uint32 // xs:unsignedInt
 
 	/** @type {?number} */
-	PresentationTimeOffset int
+	PresentationTimeOffset uint64 // xs:unsignedLong
 
 	/**
 	 * Each segment's duration. This value is never zero.
 	 * @type {?number}
 	 */
-	SegmentDuration int
+	SegmentDuration int // xs:duration
 
 	/**
 	 * The segment number origin. This value is never zero.
 	 * @type {?number}
 	 */
-	StartNumber int
+	StartNumber uint32 // xs:unsignedInt
 
 	/** @type {Initialization} */
 	Initialization *Initialization
@@ -53,15 +53,15 @@ func (segmentList *SegmentList) Parse(parent Node, elem xml.Node) {
 	}
 
 	// Parse attributes.
-	segmentList.Timescale, _ = parseAttrAsPositiveInt(elem, "timescale")
+	segmentList.Timescale, _ = parseAttrAsUnsignedInt(elem, "timescale")
 
-	segmentList.PresentationTimeOffset, _ = parseAttrAsNonNegativeInt(elem, "presentationTimeOffset")
+	segmentList.PresentationTimeOffset, _ = parseAttrAsUnsignedLong(elem, "presentationTimeOffset")
 
 	if segmentList.SegmentDuration, err = parseAttrAsPositiveInt(elem, "duration"); err != nil {
 		segmentList.SegmentDuration = -1
 	}
 
-	if segmentList.StartNumber, err = parseAttrAsPositiveInt(elem, "startNumber"); err != nil {
+	if segmentList.StartNumber, err = parseAttrAsUnsignedInt(elem, "startNumber"); err != nil {
 		segmentList.StartNumber = 1
 	}
 

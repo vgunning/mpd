@@ -6,13 +6,13 @@ type SegmentReference struct {
 	 * The segment's ID.
 	 * @const {number}
 	 */
-	Id int
+	Id uint64
 
 	/**
 	 * The time, in seconds, that the segment begins.
 	 * @const {number}
 	 */
-	StartTime int
+	StartTime uint64
 
 	/**
 	 * The time, in seconds, that the segment ends. The segment ends immediately
@@ -20,7 +20,7 @@ type SegmentReference struct {
 	 * end of the stream.
 	 * @const {?number}
 	 */
-	EndTime int
+	EndTime uint64
 
 	/**
 	 * The position of the segment's first byte.
@@ -42,9 +42,9 @@ type SegmentReference struct {
 	Url string
 }
 
-func NewSegmentReference(id, startTime, endTime, startByte, endByte int, url string) SegmentReference {
+func NewSegmentReference(id, startTime, endTime uint64, startByte, endByte int, url string) SegmentReference {
 	// assert((endTime == -1) || (startTime <= endTime), "startTime should be <= endTime")
-	assert((endTime == -1) || (startTime <= endTime))
+	assert((endTime == 0) || (startTime <= endTime))
 
 	return SegmentReference{
 		Id: id,

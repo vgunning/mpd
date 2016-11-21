@@ -3,8 +3,6 @@ package mpd
 import (
 	"errors"
 	"fmt"
-	"github.com/moovweb/gokogiri"
-	"github.com/moovweb/gokogiri/xml"
 	"io/ioutil"
 	"net/http"
 	"reflect"
@@ -12,6 +10,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/moovweb/gokogiri"
+	"github.com/moovweb/gokogiri/xml"
 )
 
 const (
@@ -316,7 +317,7 @@ func parseChild(parent Node, elem xml.Node, name string) Node {
 	var err error
 
 	if childElement, err = findChild(elem, name); err != nil {
-		fmt.Println("Element missing")
+		fmt.Println("Element missing: ", name)
 		return parsedChild
 	}
 
@@ -563,6 +564,52 @@ func parseNonNegativeInt(value string) (int, error) {
 		} else {
 			return int(value), nil
 		}
+	}
+}
+
+/**
+ * Parses an unsigned long integer.
+ * @param {string} uintString The unsigned long string.
+ * @return {?number} The parsed non-negative integer on success; otherwise,
+ *     return null.
+ * @private
+ */
+func parseAttrAsUnsignedLong(elem xml.Node, name string) (uint64, error) {
+	attribute := elem.Attribute(name)
+	if attribute == nil {
+		return 0, errors.New("missing attribute")
+	}
+	return parseUnsignedLong(attribute.Value())
+}
+
+func parseUnsignedLong(value string) (uint64, error) {
+	if value, err := strconv.ParseUint(value, 10, 64); err != nil {
+		return 0, err
+	} else {
+		return uint64(value), nil
+	}
+}
+
+/**
+ * Parses an unsigned integer.
+ * @param {string} uintString The unsigned int string.
+ * @return {?number} The parsed non-negative integer on success; otherwise,
+ *     return null.
+ * @private
+ */
+func parseAttrAsUnsignedInt(elem xml.Node, name string) (uint32, error) {
+	attribute := elem.Attribute(name)
+	if attribute == nil {
+		return 0, errors.New("missing attribute")
+	}
+	return parseUnsignedInt(attribute.Value())
+}
+
+func parseUnsignedInt(value string) (uint32, error) {
+	if value, err := strconv.ParseUint(value, 10, 32); err != nil {
+		return 0, err
+	} else {
+		return uint32(value), nil
 	}
 }
 
