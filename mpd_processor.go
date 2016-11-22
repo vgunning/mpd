@@ -71,7 +71,7 @@ func (mpdProcessor *MpdProcessor) Process(mpd *Mpd) {
 func (mpdProcessor *MpdProcessor) validateSegmentInfo(mpd *Mpd) {
 	for _, period := range mpd.Periods {
 		for _, adaptationSet := range period.AdaptationSets {
-			if adaptationSet.ContentType == "text" {
+			if adaptationSet.ContentType[0] == "text" {
 				continue
 			}
 
@@ -286,7 +286,6 @@ func (mpdProcessor *MpdProcessor) createManifestInfo(mpd Mpd) {
 		periodInfo.Duration = period.Duration
 
 		for _, adaptationSet := range period.AdaptationSets {
-
 			streamSetInfo := NewStreamSetInfo()
 			streamSetInfo.Id = adaptationSet.Id
 			streamSetInfo.Main = adaptationSet.Main
@@ -299,10 +298,10 @@ func (mpdProcessor *MpdProcessor) createManifestInfo(mpd Mpd) {
 			maxLastEndTime := uint64(0)
 
 			for _, representation := range adaptationSet.Representations {
-
 				streamInfo := mpdProcessor.createStreamInfo(mpd, *period, *representation)
 				if streamInfo == nil {
 					// An error has already been logged.
+					println("Stream info is nil")
 					continue
 				}
 
@@ -789,12 +788,12 @@ func (mpdProcessor *MpdProcessor) buildStreamInfoFromSegmentTimeline(mpd Mpd, pe
 		bestAvailableTimestamp := references[len(references)-1].StartTime - uint64(minBufferTime)
 
 		if bestAvailableTimestamp >= earliestAvailableTimestamp {
-			fmt.Printf("The best available segment is still available!")
+			fmt.Printf("The best available segment is still available!\r\n")
 		} else {
 			// NOTE: @minBufferTime is large compared to @timeShiftBufferDepth, so we
 			// can't start as far back, for buffering, as we'd like.
 			bestAvailableTimestamp = earliestAvailableTimestamp
-			fmt.Printf("The best available segment is no longer available.")
+			fmt.Printf("The best available segment is no longer available.\r\n")
 		}
 
 		for i := 0; i < len(references); i++ {
@@ -815,7 +814,7 @@ func (mpdProcessor *MpdProcessor) buildStreamInfoFromSegmentTimeline(mpd Mpd, pe
 
 	segmentIndex := NewSegmentIndex(references)
 	streamInfo.SegmentIndex = &segmentIndex
-	fmt.Printf("Generated SegmentIndex from SegmentTimeline", streamInfo.SegmentIndex)
+	// fmt.Printf("Generated SegmentIndex from SegmentTimeline %s\r\n", streamInfo.SegmentIndex)
 
 	return true
 }

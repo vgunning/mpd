@@ -13,7 +13,7 @@ type StreamSetInfo struct {
 	Id string
 
 	/** @type {string} */
-	ContentType string
+	ContentType []string
 
 	/** @type {!Array.<!StreamInfo>} */
 	StreamInfos []*StreamInfo
@@ -34,7 +34,7 @@ func NewStreamSetInfo() StreamSetInfo {
 	return StreamSetInfo{
 		UniqueId:    streamSetInfoNextUniqueId,
 		Id:          "",
-		ContentType: "",
+		ContentType: []string{""},
 		StreamInfos: make([]*StreamInfo, 0),
 
 		/** @type {!Array.<!DrmSchemeInfo>} */

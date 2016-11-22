@@ -1,8 +1,9 @@
 package mpd
 
 import (
-	"github.com/moovweb/gokogiri/xml"
 	"strings"
+
+	"github.com/moovweb/gokogiri/xml"
 )
 
 type AdaptationSet struct {
@@ -22,7 +23,7 @@ type AdaptationSet struct {
 	 * If not specified, will be inferred from the MIME type.
 	 * @type {?string}
 	 */
-	ContentType string
+	ContentType []string
 
 	/** @type {?number} */
 	Width int
@@ -69,14 +70,14 @@ type AdaptationSet struct {
 func (adaptationSet *AdaptationSet) Parse(parent Node, elem xml.Node) {
 	var err error
 	var p *Period = parent.(*Period)
-	var contentComponent *ContentComponent
+	var contentComponents []*ContentComponent
 	var role *Role
 
 	ok := false
 
-	// Parse children which provide properties of the AdaptationSet.
-	if contentComponent, ok = parseChild(adaptationSet, elem, ContentComponent_TAG_NAME).(*ContentComponent); ok == false {
-		contentComponent = nil
+	children := parseChildren(adaptationSet, elem, ContentComponent_TAG_NAME)
+	for _, child := range children {
+		contentComponents = append(contentComponents, child.(*ContentComponent))
 	}
 
 	if role, ok = parseChild(adaptationSet, elem, Role_TAG_NAME).(*Role); ok == false {
@@ -91,19 +92,25 @@ func (adaptationSet *AdaptationSet) Parse(parent Node, elem xml.Node) {
 	adaptationSet.Codecs, _ = parseAttrAsString(elem, "codecs")
 
 	if adaptationSet.Lang, err = parseAttrAsString(elem, "lang"); err != nil {
-		if contentComponent != nil {
-			adaptationSet.Lang = contentComponent.Lang
+		if contentComponents != nil {
+			// For now, just take the first one
+			adaptationSet.Lang = contentComponents[0].Lang
 		} else {
 			adaptationSet.Lang = ""
 		}
 	}
 
-	if adaptationSet.ContentType, err = parseAttrAsString(elem, "contentType"); err != nil {
-		if contentComponent != nil {
-			adaptationSet.ContentType = contentComponent.ContentType
+	if tmp, err := parseAttrAsString(elem, "contentType"); err != nil {
+		if contentComponents != nil {
+			for _, contentComponet := range contentComponents {
+				adaptationSet.ContentType = append(adaptationSet.ContentType,
+					contentComponet.ContentType)
+			}
 		} else {
-			adaptationSet.ContentType = ""
+			adaptationSet.ContentType = append(adaptationSet.ContentType, "")
 		}
+	} else {
+		adaptationSet.ContentType = append(adaptationSet.ContentType, tmp)
 	}
 
 	adaptationSet.Main = (role != nil && role.Value == "main")
@@ -122,7 +129,8 @@ func (adaptationSet *AdaptationSet) Parse(parent Node, elem xml.Node) {
 	if len(adaptationSet.ContentType) == 0 && len(adaptationSet.MimeType) != 0 {
 		// Infer contentType from mimeType. This must be done before parsing any
 		// child Representations, as Representation inherits contentType.
-		adaptationSet.ContentType = strings.Split(adaptationSet.MimeType, "/")[0]
+		adaptationSet.ContentType = append(adaptationSet.ContentType,
+			strings.Split(adaptationSet.MimeType, "/")[0])
 	}
 
 	// Parse hierarchical children.
@@ -150,7 +158,7 @@ func (adaptationSet *AdaptationSet) Parse(parent Node, elem xml.Node) {
 		}
 	}
 
-	children := parseChildren(adaptationSet, elem, Representation_TAG_NAME)
+	children = parseChildren(adaptationSet, elem, Representation_TAG_NAME)
 	adaptationSet.Representations = make([]*Representation, len(children))
 	for i, child := range children {
 		adaptationSet.Representations[i] = child.(*Representation)
@@ -162,7 +170,8 @@ func (adaptationSet *AdaptationSet) Parse(parent Node, elem xml.Node) {
 		adaptationSet.MimeType = adaptationSet.Representations[0].MimeType
 
 		if len(adaptationSet.ContentType) == 0 && len(adaptationSet.MimeType) != 0 {
-			adaptationSet.ContentType = strings.Split(adaptationSet.MimeType, "/")[0]
+			adaptationSet.ContentType = append(adaptationSet.ContentType,
+				strings.Split(adaptationSet.MimeType, "/")[0])
 		}
 	}
 }
