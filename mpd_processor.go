@@ -71,7 +71,7 @@ func (mpdProcessor *MpdProcessor) Process(mpd *Mpd) {
 func (mpdProcessor *MpdProcessor) validateSegmentInfo(mpd *Mpd) {
 	for _, period := range mpd.Periods {
 		for _, adaptationSet := range period.AdaptationSets {
-			if adaptationSet.ContentType[0] == "text" {
+			if adaptationSet.ContentType.Contains("text") {
 				continue
 			}
 

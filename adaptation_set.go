@@ -3,6 +3,7 @@ package mpd
 import (
 	"strings"
 
+	mapset "github.com/deckarep/golang-set"
 	"github.com/moovweb/gokogiri/xml"
 )
 
@@ -23,7 +24,7 @@ type AdaptationSet struct {
 	 * If not specified, will be inferred from the MIME type.
 	 * @type {?string}
 	 */
-	ContentType []string
+	ContentType mapset.Set
 
 	/** @type {?number} */
 	Width int
@@ -103,14 +104,13 @@ func (adaptationSet *AdaptationSet) Parse(parent Node, elem xml.Node) {
 	if tmp, err := parseAttrAsString(elem, "contentType"); err != nil {
 		if contentComponents != nil {
 			for _, contentComponet := range contentComponents {
-				adaptationSet.ContentType = append(adaptationSet.ContentType,
-					contentComponet.ContentType)
+				adaptationSet.ContentType.Add(contentComponet.ContentType)
 			}
 		} else {
-			adaptationSet.ContentType = append(adaptationSet.ContentType, "")
+			adaptationSet.ContentType.Add("")
 		}
 	} else {
-		adaptationSet.ContentType = append(adaptationSet.ContentType, tmp)
+		adaptationSet.ContentType.Add(tmp)
 	}
 
 	adaptationSet.Main = (role != nil && role.Value == "main")
@@ -126,11 +126,11 @@ func (adaptationSet *AdaptationSet) Parse(parent Node, elem xml.Node) {
 
 	// adaptationSet.ContentProtections = parseChildren(adaptationSet, elem, ContentProtection_TAG_NAME)
 
-	if len(adaptationSet.ContentType) == 0 && len(adaptationSet.MimeType) != 0 {
+	if adaptationSet.ContentType.Contains("") && (len(adaptationSet.MimeType) != 0) {
 		// Infer contentType from mimeType. This must be done before parsing any
 		// child Representations, as Representation inherits contentType.
-		adaptationSet.ContentType = append(adaptationSet.ContentType,
-			strings.Split(adaptationSet.MimeType, "/")[0])
+		adaptationSet.ContentType.Add(strings.Split(adaptationSet.MimeType, "/")[0])
+		adaptationSet.ContentType.Remove("")
 	}
 
 	// Parse hierarchical children.
@@ -169,13 +169,14 @@ func (adaptationSet *AdaptationSet) Parse(parent Node, elem xml.Node) {
 		// where Representations have inconsistent mimeTypes.
 		adaptationSet.MimeType = adaptationSet.Representations[0].MimeType
 
-		if len(adaptationSet.ContentType) == 0 && len(adaptationSet.MimeType) != 0 {
-			adaptationSet.ContentType = append(adaptationSet.ContentType,
-				strings.Split(adaptationSet.MimeType, "/")[0])
+		if adaptationSet.ContentType.Contains("") && (len(adaptationSet.MimeType) != 0) {
+			adaptationSet.ContentType.Add(strings.Split(adaptationSet.MimeType, "/")[0])
 		}
 	}
 }
 
 func NewAdaptationSet() Node {
-	return &AdaptationSet{}
+	return &AdaptationSet{
+		ContentType: mapset.NewSet(),
+	}
 }

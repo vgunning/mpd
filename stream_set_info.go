@@ -1,5 +1,9 @@
 package mpd
 
+import (
+	mapset "github.com/deckarep/golang-set"
+)
+
 /**
  * The next unique ID to assign to a StreamSetInfo.
  */
@@ -13,7 +17,7 @@ type StreamSetInfo struct {
 	Id string
 
 	/** @type {string} */
-	ContentType []string
+	ContentType mapset.Set
 
 	/** @type {!Array.<!StreamInfo>} */
 	StreamInfos []*StreamInfo
@@ -34,7 +38,7 @@ func NewStreamSetInfo() StreamSetInfo {
 	return StreamSetInfo{
 		UniqueId:    streamSetInfoNextUniqueId,
 		Id:          "",
-		ContentType: []string{""},
+		ContentType: mapset.NewSet(),
 		StreamInfos: make([]*StreamInfo, 0),
 
 		/** @type {!Array.<!DrmSchemeInfo>} */
